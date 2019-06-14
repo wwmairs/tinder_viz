@@ -1,18 +1,12 @@
 const svgns = "http://w3.org/2000/svg";
-let container = document.getElementById("scatter-container");
-let svg = document.createElementNS(svgns, "svg");
-svg.setAttribute("width", container.offsetWidth);
-svg.setAttribute("height", container.offsetHeight);
+const CHART_PADDING = 10;
+const POINT_SIZE = 10;
 
 var scatterPlot
-var chartPadding = 10;
 
 $.get("data.json", json => {
-    // format into something for scatter plot
-    //                       for bar chart (?)
-
     var data = parseData(json);
-    console.log(data);
+    makeCharts(data);
 });
 
 // utils
@@ -23,24 +17,25 @@ function median(arr) {
 }
 
 function parseData(data) {
-    // need from data so far:
-
     /* 
-    'matches' : [
+    updated portions of tinder data
+
+    'Messages' : [
          {
-             'match_name' : <string>,
+             'date' : <string=ISO of first message>,-1 if none
+             'match_id' : <string>,
              'messages': [<Message>],
              'opens_on_first_message' : <int>,
-             'median_time_between_messages' : <int>,
+             'median_time_between_messages' : <int>,-1 if < 2
              'number_of_messages' : <int>,
              'gave_phone_number' : <bool>
          }
-     , ...]
+     ...],
+     ...,
      'max_opens_per_day': <int>,
      'max_median_time_between_messages' : <int>,
     */
 
-    // we'll probably need other things too
     data.Messages.map(match => {
         let times_between_messages = match.messages.map((msg, i) => {
             if (i + 1 >= match.messages.length) {
@@ -63,4 +58,80 @@ function parseData(data) {
     data["max_opens_per_day"] = Math.max(...Object.values(data.Usage.app_opens));
 
     return data;
+}
+
+function makeCharts(data) {
+    console.log(data);
+    let container = document.getElementById("scatter-container");
+    scatterPlot = new ScatterPlot(container, data);
+}
+
+class ScatterPlot {
+    constructor(_cont, data) {
+        this.cont = _cont;
+
+        this.svg = document.createElementNS(svgns, "svg");
+        this.svg.setAttribute("width", this.cont.offsetWidth);
+        this.svg.setAttribute("height", this.cont.offsetHeight);
+        this.cont.appendChild(this.svg);
+        this.g = document.createElementNS(svgns, "g");
+        this.svg.appendChild(this.g);
+
+        this.maxX = data.max_opens_per_day;
+        this.mayY = data.max_median_time_between_messages;
+        this.points = [];
+
+
+
+        // make points
+        let quad = { "g" : this.g,
+                     "x" : this.CHART_PADDING,
+                     "y" : this.CHART_PADDING,
+                     "w" : this.svg.width - (CHART_PADDING * 2),
+                     "h" : this.svg.height - (CHART_PADDING * 2),
+                     "maxX" : this.maxX,
+                     "maxY" : this.maxY
+                   }
+        data.Messages.map( match => {
+            this.points.push(new MatchPoint(quad,
+                                            match.opens_on_first_message,
+                                            match.median_time_between_messages,
+                                            match.gave_phone_number,
+                                            match.number_of_messages));
+        });
+
+        console.log(this);
+    }
+
+    draw() {
+        // draw axes, labels, grid(?), &c.
+        // draw points
+    }
+}
+
+class MatchPoint { 
+    /* quadrant, var values, not coordinates, which it calculates itself
+        quadrant : { 'g' : <svg::g>,
+                     'x' : <int> starting x value for quadrant,
+                     'y' : <int> starting y value for quadrant,
+                     'w' : <int> width of quadrant,
+                     'h' : <int> height of quadrant,
+                     'maxX' : <int> max x value in quadrant,
+                     'maxY' : <int> max y value in quadrant
+                   }
+    */
+                
+    constructor(_quad, _x, _y, _z, _r) {
+        this.quad = _quad;        
+        this.x = _x;
+        this.y = _y;
+        this.z = _z;
+        this.r = _r;
+
+        this.xStep = this.quad.w / this.quad.maxX;
+        this.yStep = this.quad.h / this.quad.maxY;
+    }
+
+    draw() {
+    }
 }
