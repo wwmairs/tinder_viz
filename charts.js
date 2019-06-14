@@ -1,6 +1,8 @@
 const svgns = "http://w3.org/2000/svg";
 const CHART_PADDING = 10;
 const POINT_SIZE = 10;
+const POINT_COLOR = "#005a5f";
+const HIGHTLIGHT_COLOR = "#d98a86";
 
 var scatterPlot
 
@@ -78,17 +80,16 @@ class ScatterPlot {
         this.svg.appendChild(this.g);
 
         this.maxX = data.max_opens_per_day;
-        this.mayY = data.max_median_time_between_messages;
+        this.maxY = data.max_median_time_between_messages;
         this.points = [];
-
 
 
         // make points
         let quad = { "g" : this.g,
-                     "x" : this.CHART_PADDING,
-                     "y" : this.CHART_PADDING,
-                     "w" : this.svg.width - (CHART_PADDING * 2),
-                     "h" : this.svg.height - (CHART_PADDING * 2),
+                     "x" : CHART_PADDING,
+                     "y" : CHART_PADDING,
+                     "w" : this.cont.offsetWidth - (CHART_PADDING * 2),
+                     "h" : this.cont.offsetHeight - (CHART_PADDING * 2),
                      "maxX" : this.maxX,
                      "maxY" : this.maxY
                    }
@@ -99,6 +100,13 @@ class ScatterPlot {
                                             match.gave_phone_number,
                                             match.number_of_messages));
         });
+
+        let p = document.createElementNS(svgns, "circle");
+        p.setAttribute("cy", 50);
+        p.setAttribute("cx", 50,);
+        p.setAttribute("r", 50);
+        p.setAttribute("fill", "#DF6151");
+        this.svg.appendChild(p);
 
         console.log(this);
     }
@@ -130,6 +138,16 @@ class MatchPoint {
 
         this.xStep = this.quad.w / this.quad.maxX;
         this.yStep = this.quad.h / this.quad.maxY;
+
+        this.xCoord = this.x * this.xStep;
+        this.yCoord = this.y * this.yStep;
+
+        this.point = document.createElementNS(svgns, "circle");
+        this.point.setAttribute("cx", this.quad.x + this.xCoord);
+        this.point.setAttribute("cy", this.quad.y + (this.quad.h - this.yCoord));
+        this.point.setAttribute("r", POINT_SIZE);
+        this.point.setAttribute("fill", this.z ? HIGHILIGHT_COLOR : POINT_COLOR);
+        this.quad.g.appendChild(this.point);
     }
 
     draw() {
