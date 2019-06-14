@@ -39,6 +39,8 @@ function parseData(data) {
      'max_opens_per_day': <int>,
      'max_median_time_between_messages' : <int>,
     */
+
+    // we'll probably need other things too
     data.Messages.map(match => {
         let times_between_messages = match.messages.map((msg, i) => {
             if (i + 1 >= match.messages.length) {
@@ -48,15 +50,17 @@ function parseData(data) {
             let date2 = new Date(match.messages[i + 1].sent_date);
             return date2 - date1;
         });
-        match['median_time_between_messages'] = match.messages.length > 1 ? median(times_between_messages.filter(x => x >= 0)) : -1;
-        match['number_of_messages'] = match.messages.length;
+        match["median_time_between_messages"] = match.messages.length > 1 ? median(times_between_messages.filter(x => x >= 0)) : -1;
+        match["number_of_messages"] = match.messages.length;
+        match["date"] = match.messages.length > 0 ? new Date(match.messages[0].sent_date).toISOString().split("T")[0] : -1;
+        match["opens_on_first_message"] = data.Usage.app_opens[match.date];
         // TODO
-        match['opens_on_first_message'] = 0;
-        match['gave_phone_number'] = false;
+        match["gave_phone_number"] = undefined;
 
     });
 
-    data['max_median_time_between_messages'] = Math.max(...data.Messages.map(m => m['median_time_between_messages']));
+    data["max_median_time_between_messages"] = Math.max(...data.Messages.map(m => m["median_time_between_messages"]));
+    data["max_opens_per_day"] = Math.max(...Object.values(data.Usage.app_opens));
 
     return data;
 }
