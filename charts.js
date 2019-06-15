@@ -2,11 +2,11 @@ const svgns = "http://www.w3.org/2000/svg";
 const CHART_PADDING = 10;
 const POINT_SIZE = 10;
 const POINT_COLOR = "#005a5f";
-const HIGHTLIGHT_COLOR = "#d98a86";
+const HIGHLIGHT_COLOR = "#d98a86";
 
 var scatterPlot
 
-$.get("data.json", json => {
+$.get("data2.json", json => {
     var data = parseData(json);
     makeCharts(data);
 });
@@ -73,8 +73,8 @@ class ScatterPlot {
         this.cont = _cont;
 
         this.svg = document.createElementNS(svgns, "svg");
-        this.svg.setAttribute("width", this.cont.offsetWidth + "px");
-        this.svg.setAttribute("height", this.cont.offsetHeight + "px");
+        this.svg.setAttribute("width", this.cont.offsetWidth);
+        this.svg.setAttribute("height", this.cont.offsetHeight);
         this.cont.appendChild(this.svg);
         this.g = document.createElementNS(svgns, "g");
         this.svg.appendChild(this.g);
@@ -93,23 +93,19 @@ class ScatterPlot {
                      "maxX" : this.maxX,
                      "maxY" : this.maxY
                    }
-        /*
         data.Messages.map( match => {
-            this.points.push(new MatchPoint(quad,
-                                            match.opens_on_first_message,
-                                            match.median_time_between_messages,
-                                            match.gave_phone_number,
-                                            match.number_of_messages));
+            let pdata = { "x" : match.opens_on_first_message,
+                          "y" : match.median_time_between_messages,
+                          "z" : match.gave_phone_number,
+                          "r" : match.number_of_messages,
+                          "xLabel" : "Opens on first message: ",
+                          "yLabel" : "Median time between messages: ",
+                          "zLabel" : "Gave phone number?: ",
+                          "rLabel" : "Number of messages: "
+            }
+            this.points.push(new MatchPoint(quad, pdata));
         });
-        */
         
-        let p = document.createElementNS(svgns, "circle");
-        p.setAttribute("cy", 50);
-        p.setAttribute("cx", 50,);
-        p.setAttribute("r", 50);
-        p.setAttribute("fill", "#DF6151");
-        this.svg.appendChild(p);
-
         console.log(this);
     }
 
@@ -122,36 +118,56 @@ class ScatterPlot {
 class MatchPoint { 
     /* quadrant, var values, not coordinates, which it calculates itself
         quadrant : { 'g' : <svg::g>,
-                     'x' : <int> starting x value for quadrant,
-                     'y' : <int> starting y value for quadrant,
-                     'w' : <int> width of quadrant,
-                     'h' : <int> height of quadrant,
-                     'maxX' : <int> max x value in quadrant,
-                     'maxY' : <int> max y value in quadrant
+                     'x' : <number> starting x value for quadrant,
+                     'y' : <number> starting y value for quadrant,
+                     'w' : <number> width of quadrant,
+                     'h' : <number> height of quadrant,
+                     'maxX' : <number> max x value in quadrant,
+                     'maxY' : <number> max y value in quadrant
                    }
+
+        pdata : { 'x' : <number>,
+                  'y' : <number>,
+                  'z' : <bool>,
+                  'r' : <number>,
+                  'xLabel' : <string>,
+                  'yLabel' : <string>,
+                  'zLabel' : <string>,
+                  'rLabel' : <string>,
+                }
     */
                 
-    constructor(_quad, _x, _y, _z, _r) {
+    constructor(_quad, _pdata) {
         this.quad = _quad;        
-        this.x = _x;
-        this.y = _y;
-        this.z = _z;
-        this.r = _r;
+        this.pdata = _pdata;
+        // should assert these are well-enough formed to visualize
 
         this.xStep = this.quad.w / this.quad.maxX;
         this.yStep = this.quad.h / this.quad.maxY;
 
-        this.xCoord = this.x * this.xStep;
-        this.yCoord = this.y * this.yStep;
+        this.xCoord = this.pdata.x * this.xStep;
+        this.yCoord = this.pdata.y * this.yStep;
 
         this.point = document.createElementNS(svgns, "circle");
         this.point.setAttribute("cx", this.quad.x + this.xCoord);
         this.point.setAttribute("cy", this.quad.y + (this.quad.h - this.yCoord));
-        this.point.setAttribute("r", POINT_SIZE);
-        this.point.setAttribute("fill", this.z ? HIGHILIGHT_COLOR : POINT_COLOR);
+        this.point.setAttribute("r", POINT_SIZE + (this.pdata.r * POINT_SIZE / 16));
+        this.point.setAttribute("fill", this.pdata.z ? HIGHLIGHT_COLOR : POINT_COLOR);
+        this.point.setAttribute("stroke", HIGHLIGHT_COLOR);
+        this.point.setAttribute("stroke-width", 2);
         this.quad.g.appendChild(this.point);
+        this.point.onmouseover = () => this.displayInfo(this.pdata);
+        var that = this;
     }
 
     draw() {
+    }
+
+    displayInfo(pdata) {
+        console.clear();
+        console.log(pdata.xLabel + pdata.x);
+        console.log(pdata.yLabel + pdata.y);
+        console.log(pdata.zLabel + pdata.z);
+        console.log(pdata.rLabel + pdata.r);
     }
 }
