@@ -1,4 +1,4 @@
-const svgns = "http://w3.org/2000/svg";
+const svgns = "http://www.w3.org/2000/svg";
 const CHART_PADDING = 10;
 const POINT_SIZE = 10;
 const POINT_COLOR = "#005a5f";
@@ -73,8 +73,8 @@ class ScatterPlot {
         this.cont = _cont;
 
         this.svg = document.createElementNS(svgns, "svg");
-        this.svg.setAttribute("width", this.cont.offsetWidth);
-        this.svg.setAttribute("height", this.cont.offsetHeight);
+        this.svg.setAttribute("width", this.cont.offsetWidth + "px");
+        this.svg.setAttribute("height", this.cont.offsetHeight + "px");
         this.cont.appendChild(this.svg);
         this.g = document.createElementNS(svgns, "g");
         this.svg.appendChild(this.g);
@@ -93,6 +93,7 @@ class ScatterPlot {
                      "maxX" : this.maxX,
                      "maxY" : this.maxY
                    }
+        /*
         data.Messages.map( match => {
             this.points.push(new MatchPoint(quad,
                                             match.opens_on_first_message,
@@ -100,7 +101,8 @@ class ScatterPlot {
                                             match.gave_phone_number,
                                             match.number_of_messages));
         });
-
+        */
+        
         let p = document.createElementNS(svgns, "circle");
         p.setAttribute("cy", 50);
         p.setAttribute("cx", 50,);
