@@ -18,6 +18,10 @@ function median(arr) {
     return arr.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
 }
 
+function msString(ms) {
+    console.log(new Date(ms));
+}
+
 function parseData(data) {
     /* 
     updated portions of tinder data
@@ -166,7 +170,7 @@ class MatchPoint {
     displayInfo(pdata) {
         console.clear();
         console.log(pdata.xLabel + pdata.x);
-        console.log(pdata.yLabel + pdata.y);
+        console.log(pdata.yLabel + msString(pdata.y));
         console.log(pdata.zLabel + pdata.z);
         console.log(pdata.rLabel + pdata.r);
     }
