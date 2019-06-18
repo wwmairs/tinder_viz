@@ -19,7 +19,8 @@ function median(arr) {
 }
 
 function msString(ms) {
-    console.log(new Date(ms));
+    //console.log(new Date(ms));
+    return ms;
 }
 
 function parseData(data) {
