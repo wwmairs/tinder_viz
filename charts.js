@@ -4,7 +4,8 @@ const POINT_SIZE = 10;
 const POINT_COLOR = "#005a5f";
 const HIGHLIGHT_COLOR = "#d98a86";
 
-var scatterPlot
+var scatterPlot;
+var lineChart;
 
 $.get("data2.json", json => {
     var data = parseData(json);
@@ -12,11 +13,25 @@ $.get("data2.json", json => {
 });
 
 // utils
+function zipwith(f, xs, ys) {
+    if (xs.length == 0) {
+        return [];
+    } else {
+        let z = f(xs.pop(), ys.pop());
+        return zipwith(f, xs, ys).concat([z]);
+    }
+}
+
 function median(arr) {
     const mid = Math.floor(arr.length / 2),
           nums = [...arr].sort((a, b) => a - b);
     return arr.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
 }
+
+function ISOdelta(date2, date1) {
+    return Math.round((new Date(date2) - new Date(date1))/(1000*60*60*24));
+}
+
 
 function msString(ms) {
     //console.log(new Date(ms));
@@ -39,6 +54,10 @@ function parseData(data) {
          }
      ...],
      ...,
+     'first_day' : <string=ISO of first date in usage data>,
+     'last_day' : <string=ISO of last date in usage data>,
+     'max_likes_per_day' : <int>,
+     'max_passes_per_dat' : <int>,
      'max_opens_per_day': <int>,
      'max_median_time_between_messages' : <int>,
     */
@@ -63,15 +82,97 @@ function parseData(data) {
 
     data["max_median_time_between_messages"] = Math.max(...data.Messages.map(m => m["median_time_between_messages"]));
     data["max_opens_per_day"] = Math.max(...Object.values(data.Usage.app_opens));
+    data["max_likes_per_day"] = Math.max(...Object.values(data.Usage.swipes_likes));
+    data["max_passes_per_day"] = Math.max(...Object.values(data.Usage.swipes_passes));
+
+    data["first_day"] = Object.keys(data.Usage.app_opens)[0];
+    data["last_day"] = Object.keys(data.Usage.app_opens).slice(-1)[0];
+    data["ISOdelta"] = ISOdelta(data.last_day, data.first_day);
 
     return data;
 }
 
 function makeCharts(data) {
     console.log(data);
-    let container = document.getElementById("scatter-container");
-    scatterPlot = new ScatterPlot(container, data);
+    scatterPlot = new ScatterPlot(document.getElementById("scatter-container"), data);
+    lineChart = new LineChart(document.getElementById("line-container"), data);
 }
+
+class LineChart {
+    constructor(_cont, data) {
+        this.cont = _cont;
+
+        this.svg = document.createElementNS(svgns, "svg");
+        this.svg.setAttribute("width", this.cont.offsetWidth);
+        this.svg.setAttribute("height", this.cont.offsetHeight);
+        this.cont.appendChild(this.svg);
+        this.g = document.createElementNS(svgns, "g");
+        this.svg.appendChild(this.g);
+
+        /* general idea:
+           consider start date as x=0
+           end date as x = end - start date, max x
+           figure out for each data point what it's displacement from x=0 is, use as coord
+           display months, weeks, on x axis
+        */
+        this.startX = data.first_day;
+        this.endX = data.last_day;
+        this.maxX = data.ISOdelta;
+        this.maxY = Math.max(data.max_opens_per_day,
+                             data.max_likes_per_day, 
+                             data.max_passes_per_day);
+        this.lines = [];
+        this.dataSets = [data.Usage.app_opens,
+                         data.Usage.swipes_likes,
+                         data.Usage.swipes_passes];
+
+        let quad = { "g" : this.g,
+                     "x" : CHART_PADDING,
+                     "y" : CHART_PADDING,
+                     "w" : this.cont.offsetWidth - (CHART_PADDING * 2),
+                     "h" : this.cont.offsetHeight - (CHART_PADDING * 2),
+                     "maxX" : this.maxX,
+                     "maxY" : this.maxY,
+                     "startX" : this.startX
+                   }
+
+        this.dataSets.map( set => this.lines.push(new Line(quad, set)));
+    }
+}
+
+class Line {
+    constructor(_quad, set) {
+        console.log(set);
+        this.quad = _quad;        
+        // should assert these are well-enough formed to visualize
+
+        this.xStep = this.quad.w / this.quad.maxX;
+        this.yStep = this.quad.h / this.quad.maxY;
+
+        this.poly = document.createElementNS(svgns, "polyline");
+
+        let path = ""
+        Object.entries(set).map( (entry) => {
+            let date = entry[0];
+            let yValue = entry[1];
+            let xValue = ISOdelta(date, this.quad.startX);
+
+            let xCoord = xValue * this.xStep;
+            let yCoord = yValue * this.yStep;
+
+            path += (this.quad.x + xCoord) + "," + 
+                    (this.quad.y + (this.quad.h - yCoord)) + " ";
+
+        });
+        this.poly.setAttribute("points", path);
+        this.poly.setAttribute("fill", "none");
+        this.poly.setAttribute("stroke", POINT_COLOR);
+        this.poly.setAttribute("stroke-width", "1");
+        this.quad.g.appendChild(this.poly);
+    }
+}
+
+
 
 class ScatterPlot {
     constructor(_cont, data) {
@@ -110,8 +211,6 @@ class ScatterPlot {
             }
             this.points.push(new MatchPoint(quad, pdata));
         });
-        
-        console.log(this);
     }
 
     draw() {
