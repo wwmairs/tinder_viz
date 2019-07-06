@@ -29,13 +29,28 @@
         background-color: #fefefe;
         font-family: 'Cousine', monospace;
       }
+      .bar-chart-container {
+          width: calc(50% - 2px);
+          height: calc(50% - 2px);
+          float: left;
+          border: 1px dashed black;
+      }
     </style>
   </head>
   <body>
     <h1>tinder</h1>
-
-    <div class="chart-container" id="line-container" style="width: 800px; height: 500px;"></div>
-    <div class="chart-container" id="scatter-container" style="width: 800px; height: 500px;"></div>
+    <div class="chart-container" id"cmv-container" style="width: 800px; height: 500px;">
+        <div class="bar-chart-container">
+        </div>
+        <div class="bar-chart-container">
+        </div>
+        <div class="bar-chart-container">
+        </div>
+    </div>
+    <div class="chart-container" id="line-container" style="width: 800px; height: 500px;">
+    </div>
+    <div class="chart-container" id="scatter-container" style="width: 800px; height: 500px;">
+    </div>
 
     <script src="charts.js"></script>
   </body>

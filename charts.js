@@ -3,6 +3,13 @@ const CHART_PADDING = 10;
 const POINT_SIZE = 10;
 const POINT_COLOR = "#005a5f";
 const HIGHLIGHT_COLOR = "#d98a86";
+const COLORS = {
+    "darkBlue"  : "#4500EF",
+    "green"     : "#00FF8B",
+    "red"       : "#FD297B",
+    "yellow"    : "#FFED98",
+    "lightBlue" : "#97DCFF"
+};
 
 var scatterPlot;
 var lineChart;
@@ -20,6 +27,11 @@ function zipwith(f, xs, ys) {
         let z = f(xs.pop(), ys.pop());
         return zipwith(f, xs, ys).concat([z]);
     }
+}
+
+function mean(arr) {
+    const len = arr.length;
+    return arr.reduce((x, y) => x + y) / len;
 }
 
 function median(arr) {
@@ -89,14 +101,182 @@ function parseData(data) {
     data["last_day"] = Object.keys(data.Usage.app_opens).slice(-1)[0];
     data["ISOdelta"] = ISOdelta(data.last_day, data.first_day);
 
+    var totals = {
+        "opens" : {"years" : {}, "months" : {}},
+        "likes" : {"years" : {}, "months" : {}}, 
+        "passes" : {"years" : {}, "months" : {}}
+    }
+
+    Object.entries(data.Usage.app_opens).map( (e) => {
+        let y = e[0].slice(0, 4);
+        let ym = e[0].slice(0, 7);
+        let val = e[1];
+        if (! (y in totals.opens.years)) {
+            totals.opens.years[y] = [];
+        }
+        if (! (ym in totals.opens.months)) {
+            totals.opens.months[ym] = [];
+        }
+        
+        totals.opens.years[y].push(val);
+        totals.opens.months[ym].push(val);
+    });
+    Object.entries(data.Usage.swipes_likes).map( (e) => {
+        let y = e[0].slice(0, 4);
+        let ym = e[0].slice(0, 7);
+        let val = e[1];
+        if (! (y in totals.likes.years)) {
+            totals.likes.years[y] = [];
+        }
+        if (! (ym in totals.likes.months)) {
+            totals.likes.months[ym] = [];
+        }
+
+        totals.likes.years[y].push(val);
+        totals.likes.months[ym].push(val);
+    });
+    Object.entries(data.Usage.swipes_passes).map( (e) => {
+        let y = e[0].slice(0, 4);
+        let ym = e[0].slice(0, 7);
+        let val = e[1];
+        if (! (y in totals.passes.years)) {
+            totals.passes.years[y] = [];
+        }
+        if (! (ym in totals.passes.months)) {
+            totals.passes.months[ym] = [];
+        }
+
+        totals.passes.years[y].push(val);
+        totals.passes.months[ym].push(val);
+    });
+
+    //var totals = {
+    //    "opens" : {"years" : {}, "months" : {}},
+    //    "likes" : {"years" : {}, "months" : {}}, 
+    //    "passes" : {"years" : {}, "months" : {}}
+    //}
+    var averagesPerDay = totals;
+    Object.values(averagesPerDay).map((data) => {
+        Object.entries(data.years).map((e)  => {
+            let k = e[0];
+            let v =  e[1];
+            data.years[k] = v.reduce((x, y) => x + y) / v.length
+        });
+        Object.entries(data.months).map((e)  => {
+            let k = e[0];
+            let v =  e[1];
+            data.months[k] = v.reduce((x, y) => x + y) / v.length
+        });
+    });
+
+    data["averages_per_day"] = averagesPerDay;
     return data;
 }
 
 function makeCharts(data) {
-    console.log(data);
     scatterPlot = new ScatterPlot(document.getElementById("scatter-container"), data);
     lineChart = new LineChart(document.getElementById("line-container"), data);
+    cmv = new CMV(document.getElementById("cmv-container"), data);
 }
+
+class CMV {
+    constructor(container, data) {
+        this.dataSets = data.averages_per_day;
+        this.conts = document.getElementsByClassName("bar-chart-container");
+        this.barCharts = [];
+    
+        Object.entries(this.dataSets).map( (set) => {
+            this.barCharts.push(new BarChart(this.conts[this.barCharts.length], set));
+        });
+    }
+}
+
+class BarChart {
+    constructor(_cont, data) {
+        this.cont = _cont;
+        this.label = data[0]
+        this.data = data[1];
+        this.svg = document.createElementNS(svgns, "svg");
+        this.svg.setAttribute("width", this.cont.offsetWidth);
+        this.svg.setAttribute("height", this.cont.offsetHeight);
+        this.cont.appendChild(this.svg);
+        this.g = document.createElementNS(svgns, "g");
+        this.svg.appendChild(this.g);
+
+        this.bars = [];
+        this.drawAllMonths();
+
+    }
+
+    highlightYear(year) {
+    }
+
+    highlightMonth(month) {
+    }
+
+    drawAllYears() {
+        this.draw(this.data.years);
+    }
+
+    drawYears(startYear, endYear) {
+    }
+    
+    drawYear(year) {
+    }
+
+    drawAllMonths() {
+        this.draw(this.data.months);
+    }
+
+    drawMonths(startMonth, endMonth) {
+    }
+    
+    drawMonth(month) {
+    }
+    
+    draw(data) {
+        this.bars = [];
+        let w = this.cont.offsetWidth - (CHART_PADDING * 2);
+        let h = this.cont.offsetHeight - (CHART_PADDING * 2);
+        let maxY = Math.max(...Object.values(data));
+        let countX = Object.keys(data).length;
+        let quad = { "g" : this.g,
+                     "w" : w,
+                     "h" : h,
+                     "x" : CHART_PADDING,
+                     "y" : CHART_PADDING,
+                     "xStep" : w / countX,
+                     "yStep" : h / maxY 
+        }
+        Object.entries(data).map( (entry, i) => {
+            this.bars.push(new Bar(quad, entry, i));
+        });
+    }
+}
+
+class Bar {
+    constructor(quad, data, i) {
+        // should assert these are well-enough formed to visualize
+        this.rect = document.createElementNS(svgns, "rect");
+
+        this.xLabel = data[0];
+        let yValue = data[1];
+
+        let xCoord = quad.x + (i * quad.xStep);
+        let yCoord = quad.y + (quad.h - (yValue * quad.yStep));
+
+        // rect x, y are top left corner
+        this.rect.setAttribute("x", xCoord);
+        this.rect.setAttribute("y", yCoord);
+        this.rect.setAttribute("width", quad.xStep * .75);
+        this.rect.setAttribute("height", yValue * quad.yStep);
+        this.rect.setAttribute("fill", COLORS.lightBlue);
+
+        quad.g.appendChild(this.rect);
+        
+    }
+}
+
 
 class LineChart {
     constructor(_cont, data) {
@@ -142,7 +322,6 @@ class LineChart {
 
 class Line {
     constructor(_quad, set) {
-        console.log(set);
         this.quad = _quad;        
         // should assert these are well-enough formed to visualize
 
