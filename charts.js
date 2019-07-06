@@ -1,8 +1,6 @@
 const svgns = "http://www.w3.org/2000/svg";
-const CHART_PADDING = 10;
+const CHART_PADDING = 20;
 const POINT_SIZE = 10;
-const POINT_COLOR = "#005a5f";
-const HIGHLIGHT_COLOR = "#d98a86";
 const COLORS = {
     "darkBlue"  : "#4500EF",
     "green"     : "#00FF8B",
@@ -10,6 +8,8 @@ const COLORS = {
     "yellow"    : "#FFED98",
     "lightBlue" : "#97DCFF"
 };
+const POINT_COLOR = COLORS.red;
+const HIGHLIGHT_COLOR = COLORS.yellow;;
 
 var scatterPlot;
 var lineChart;
@@ -64,14 +64,22 @@ function parseData(data) {
              'number_of_messages' : <int>,
              'gave_phone_number' : <bool>
          }
-     ...],
+    ...],
      ...,
-     'first_day' : <string=ISO of first date in usage data>,
-     'last_day' : <string=ISO of last date in usage data>,
-     'max_likes_per_day' : <int>,
-     'max_passes_per_dat' : <int>,
-     'max_opens_per_day': <int>,
-     'max_median_time_between_messages' : <int>,
+    'first_day' : <string=ISO of first date in usage data>,
+    'last_day' : <string=ISO of last date in usage data>,
+    'max_likes_per_day' : <int>,
+    'max_passes_per_dat' : <int>,
+    'max_opens_per_day': <int>,
+    'max_median_time_between_messages' : <int>,
+    'averages_per_day' : {
+         "opens" : {
+             "years" : {<yyyy> : <number>, ...}, 
+             "months" : {<yyyy-mm> : <number> ...} 
+         },
+         "likes" : ... ,
+         "passes" : ... 
+    },
     */
 
     data.Messages.map(match => {
@@ -150,11 +158,6 @@ function parseData(data) {
         totals.passes.months[ym].push(val);
     });
 
-    //var totals = {
-    //    "opens" : {"years" : {}, "months" : {}},
-    //    "likes" : {"years" : {}, "months" : {}}, 
-    //    "passes" : {"years" : {}, "months" : {}}
-    //}
     var averagesPerDay = totals;
     Object.values(averagesPerDay).map((data) => {
         Object.entries(data.years).map((e)  => {
@@ -186,16 +189,27 @@ class CMV {
         this.barCharts = [];
     
         Object.entries(this.dataSets).map( (set) => {
-            this.barCharts.push(new BarChart(this.conts[this.barCharts.length], set));
+            this.barCharts.push(new BarChart(this.conts[this.barCharts.length], 
+                                             set, 
+                                             this));
         });
+    }
+
+    highlightBar(label) {
+        this.barCharts.map((bc) => bc.highlightBar(label));
+    } 
+
+    dehighlightBar(label) {
+        this.barCharts.map((bc) => bc.dehighlightBar(label));
     }
 }
 
 class BarChart {
-    constructor(_cont, data) {
+    constructor(_cont, data, cmv) {
         this.cont = _cont;
-        this.label = data[0]
+        this.titleContent = data[0]
         this.data = data[1];
+        this.cmv = cmv;
         this.svg = document.createElementNS(svgns, "svg");
         this.svg.setAttribute("width", this.cont.offsetWidth);
         this.svg.setAttribute("height", this.cont.offsetHeight);
@@ -208,10 +222,12 @@ class BarChart {
 
     }
 
-    highlightYear(year) {
+    highlightBar(label) {
+        this.bars.find((el) => el.xLabelContent == label).highlight();
     }
 
-    highlightMonth(month) {
+    dehighlightBar(label) {
+        this.bars.find((el) => el.xLabelContent == label).dehighlight();
     }
 
     drawAllYears() {
@@ -249,17 +265,40 @@ class BarChart {
                      "yStep" : h / maxY 
         }
         Object.entries(data).map( (entry, i) => {
-            this.bars.push(new Bar(quad, entry, i));
+            this.bars.push(new Bar(quad, entry, i, this.cmv));
         });
+        // draw title
+        this.title = document.createElementNS(svgns, "text");
+        this.title.innerHTML = this.titleContent;
+        this.title.setAttribute("x", quad.x + (quad.w / 2));
+        this.title.setAttribute("y", quad.y);
+        this.g.appendChild(this.title);
+        // draw axes
+        this.xAxis = document.createElementNS(svgns, "line");
+        this.xAxis.setAttribute("x1", quad.x);
+        this.xAxis.setAttribute("y1", quad.y + quad.h);
+        this.xAxis.setAttribute("x2", quad.x + quad.w);
+        this.xAxis.setAttribute("y2", quad.y + quad.h);
+        this.xAxis.setAttribute("stroke", "#000000");
+        this.g.appendChild(this.xAxis);
+        this.yAxis = document.createElementNS(svgns, "line");
+        this.yAxis.setAttribute("x1", quad.x);
+        this.yAxis.setAttribute("y1", quad.y);
+        this.yAxis.setAttribute("x2", quad.x);
+        this.yAxis.setAttribute("y2", quad.y + quad.h);
+        this.yAxis.setAttribute("stroke", "#000000");
+        this.g.appendChild(this.yAxis);
     }
 }
 
 class Bar {
-    constructor(quad, data, i) {
+    constructor(quad, data, i, cmv) {
+        this.cmv = cmv;
+        this.quad = quad;
         // should assert these are well-enough formed to visualize
         this.rect = document.createElementNS(svgns, "rect");
 
-        this.xLabel = data[0];
+        this.xLabelContent = data[0];
         let yValue = data[1];
 
         let xCoord = quad.x + (i * quad.xStep);
@@ -271,9 +310,38 @@ class Bar {
         this.rect.setAttribute("width", quad.xStep * .75);
         this.rect.setAttribute("height", yValue * quad.yStep);
         this.rect.setAttribute("fill", COLORS.lightBlue);
+        this.rect.onmouseover = () => this.cmv.highlightBar(this.xLabelContent);
+        this.rect.onmouseout = () => this.cmv.dehighlightBar(this.xLabelContent);
 
         quad.g.appendChild(this.rect);
-        
+
+        this.xLabel = document.createElementNS(svgns, "text");
+        this.xLabel.innerHTML = this.xLabelContent;
+        this.xLabel.setAttribute("x", xCoord);
+        this.xLabel.setAttribute("y", quad.y + quad.h + (CHART_PADDING / 2));
+        this.xLabel.setAttribute("opacity", 0);
+
+        quad.g.appendChild(this.xLabel);
+
+        this.yLabel = document.createElementNS(svgns, "text");
+        this.yLabel.innerHTML = yValue.toFixed(2);
+        this.yLabel.setAttribute("x", xCoord + quad.xStep / 2);
+        this.yLabel.setAttribute("y", yCoord);
+        this.yLabel.setAttribute("opacity", 0);
+
+    }
+
+    highlight() {
+        this.quad.g.appendChild(this.yLabel);
+        this.rect.setAttribute("fill", COLORS.yellow);
+        this.xLabel.setAttribute("opacity", 1);
+        this.yLabel.setAttribute("opacity", 1);
+    }
+
+    dehighlight() {
+        this.rect.setAttribute("fill", COLORS.lightBlue);
+        this.xLabel.setAttribute("opacity", 0);
+        this.yLabel.setAttribute("opacity", 0);
     }
 }
 
