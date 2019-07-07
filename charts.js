@@ -1,6 +1,7 @@
 const svgns = "http://www.w3.org/2000/svg";
 const CHART_PADDING = 20;
 const POINT_SIZE = 10;
+const LINE_POINT_SIZE = 2;
 const COLORS = {
     "darkBlue"  : "#4500EF",
     "green"     : "#00FF8B",
@@ -178,40 +179,57 @@ function parseData(data) {
 
 function makeCharts(data) {
     scatterPlot = new ScatterPlot(document.getElementById("scatter-container"), data);
-    lineChart = new LineChart(document.getElementById("line-container"), data);
     cmv = new CMV(document.getElementById("cmv-container"), data);
 }
 
 class CMV {
     constructor(container, data) {
-        this.dataSets = data.averages_per_day;
-        this.conts = document.getElementsByClassName("bar-chart-container");
+        // barCharts
+        this.barChartDataSets = data.averages_per_day;
+        this.conts = document.getElementsByClassName("cmv-chart-container");
         this.barCharts = [];
+        this.lineCharts = [];
     
-        Object.entries(this.dataSets).map( (set) => {
+        Object.entries(this.barChartDataSets).map((set) => {
             this.barCharts.push(new BarChart(this.conts[this.barCharts.length], 
                                              set, 
                                              this));
         });
 
-        this.drawAllYears();
+        // lineCharts
+        this.lineChartDataSets = [["opens", data.Usage.app_opens],
+                                  ["likes", data.Usage.swipes_likes],
+                                  ["passes", data.Usage.swipes_passes]];
+
+        this.lineChartDataSets.map((set) => {
+            this.lineCharts.push(
+                new LineChart(this.conts[this.barCharts.length + this.lineCharts.length],
+                set,
+                this));
+        });
+
+
+        this.drawAllYears();;
     }
     // should each view have the same scale?
-
     setView(start, end=start) {
-        if (start == end) {
-            if (start.length == 4) {
-                this.drawYear(start);
-            } else {
-                this.drawMonth(start);
-            }
-        } else {
-            if (start.length == 4) {
-                this.drawYears(start, end);
-            } else {
-                this.drawMonths(start, end);
-            }
+        this.start = start;
+        this.end = end;
+        if (start.length == 4) {
+            this.showBarCharts();
+            this.barCharts.map((bc) => bc.setView(start, end));
+        } else if (start.length == 7) {
+            this.showLineCharts();
+            this.lineCharts.map((lc) => lc.setView(start, end));
         }
+    }
+
+    highlightPoint(label) {
+        this.lineCharts.map((lc) => lc.highlightPoint(label));
+    }
+
+    dehighlightPoint(label) {
+        this.lineCharts.map((lc) => lc.dehighlighPoint(label));
     }
 
     highlightBar(label) {
@@ -223,29 +241,232 @@ class CMV {
     }
 
     drawAllYears() {
+        this.showBarCharts();
         this.barCharts.map((bc) => bc.drawAllYears());
     }
     
     drawYears(startYear, endYear) {
+        this.showBarCharts();
         this.barCharts.map((bc) => bc.drawYears(startYear, endYear));
     }
 
     drawYear(year) {
+        this.showBarCharts();
         this.barCharts.map((bc) => bc.drawYear(year));
     }
 
     drawAllMonths() {
+        this.showBarCharts();
         this.barCharts.map((bc) => bc.drawAllMonths());
     }
 
     drawMonths(startMonth, endMonth) {
+        this.showBarCharts();
         this.barCharts.map((bc) => bc.drawMonths(startMonth, endMonth));
     }
 
-    drawMonth() {
-        // need to make line charts at this point
+    drawMonth(month) {
+        this.showLineCharts();
+        this.lineCharts.map((lc) => lc.drawMonth(month));
     }
 
+    showBarCharts() {
+        this.barCharts.map((bc) => {
+            bc.cont.classList.remove("hidden");
+        });
+        this.lineCharts.map((lc) => {
+            lc.cont.classList.add("hidden");
+        });
+    }
+
+    showLineCharts() {
+        this.barCharts.map((bc) => {
+            bc.cont.classList.add("hidden");
+        });
+        this.lineCharts.map((lc) => {
+            lc.cont.classList.remove("hidden");
+        });
+    }
+
+}
+
+class LineChart {
+    constructor(_cont, data, cmv) {
+        this.cont = _cont;
+        this.set = data[1];
+        this.cmv = cmv;
+        this.titleContent = data[0];
+
+        this.svg = document.createElementNS(svgns, "svg");
+        this.svg.setAttribute("width", this.cont.offsetWidth);
+        this.svg.setAttribute("height", this.cont.offsetHeight);
+        this.cont.appendChild(this.svg);
+        this.g = document.createElementNS(svgns, "g");
+        this.svg.appendChild(this.g);
+        this.line;
+        this.title = document.createElementNS(svgns, "text");
+        this.title.onclick = this.setViewOneUp;
+
+        /* general idea:
+           consider start date as x=0
+           end date as x = end - start date, max x
+           figure out for each data point what it's displacement from x=0 is, use as coord
+           display months, weeks, on x axis
+        */
+    }
+
+    hightlightPoint(label) {
+        this.line.highlightPoint(label);
+    }
+
+    dehilightPoint(label) {
+        this.line.dehighlightPoint(label);
+    }
+
+    setViewOneUp() {
+        if (cmv.start == cmv.end) {
+            if (cmv.start.length == 4) {
+                cmv.drawAllYears();
+            }
+            if (cmv.start.length == 7) {
+                cmv.setView(cmv.start.split("-")[0]);
+            }
+        }
+    }
+
+    setView(start, end=start) {
+        this.drawMonth(start);
+    }
+
+    drawMonth(month) {
+        this.drawDays(month + "-01", month + "-31");
+    }
+
+    drawAllDays() {
+        this.draw(this.set);
+    }
+
+    drawDays(firstDay, lastDay) {
+        let selectedData = {};
+        Object.entries(this.set).map((e) => {
+            let k = e[0];
+            let v = e[1];
+            let date = k.split("-");
+            let date1 = firstDay.split("-");
+            let date2 = lastDay.split("-");
+            if ( (date[0] >= date1[0] && date[0] <= date2[0]) &&
+                 (date[1] >= date1[1] && date[1] <= date2[1]) &&
+                 (date[2] >= date1[2] && date[2] <= date2[2])) {
+                selectedData[k] = v;
+            }
+
+        });
+        this.draw(selectedData);
+    }
+
+    draw(set) {
+        // make new data list
+        if (this.line != undefined) {
+            this.clear();
+        }
+        let firstDay = Object.entries(set)[0][0];
+        let lastDay = Object.entries(set).slice(-1)[0][0];
+        let maxX = ISOdelta(lastDay, firstDay);
+        let maxY = Math.max(...Object.values(set));
+
+        let quad = { "g" : this.g,
+                     "x" : CHART_PADDING,
+                     "y" : CHART_PADDING,
+                     "w" : this.cont.offsetWidth - (CHART_PADDING * 2),
+                     "h" : this.cont.offsetHeight - (CHART_PADDING * 2),
+                     "maxX" : maxX,
+                     "maxY" : maxY,
+                     "startX" : firstDay
+                   }
+        this.line = new Line(quad, set, cmv);
+        // draw title
+        this.title.innerHTML = this.titleContent;
+        this.title.setAttribute("x", quad.x + (quad.w / 2));
+        this.title.setAttribute("y", quad.y);
+        this.g.appendChild(this.title);
+        // draw axes
+        this.xAxis = document.createElementNS(svgns, "line");
+        this.xAxis.setAttribute("x1", quad.x);
+        this.xAxis.setAttribute("y1", quad.y + quad.h);
+        this.xAxis.setAttribute("x2", quad.x + quad.w);
+        this.xAxis.setAttribute("y2", quad.y + quad.h);
+        this.xAxis.setAttribute("stroke", "#000000");
+        this.g.appendChild(this.xAxis);
+        this.yAxis = document.createElementNS(svgns, "line");
+        this.yAxis.setAttribute("x1", quad.x);
+        this.yAxis.setAttribute("y1", quad.y);
+        this.yAxis.setAttribute("x2", quad.x);
+        this.yAxis.setAttribute("y2", quad.y + quad.h);
+        this.yAxis.setAttribute("stroke", "#000000");
+        this.g.appendChild(this.yAxis);
+    }
+
+    clear() {
+        this.line.clear();
+    }
+}
+
+class Line {
+    constructor(_quad, set, cmv) {
+        this.quad = _quad;
+        this.cmv = cmv;
+        // should assert these are well-enough formed to visualize
+
+        this.xStep = this.quad.w / this.quad.maxX;
+        this.yStep = this.quad.h / this.quad.maxY;
+
+        this.poly = document.createElementNS(svgns, "polyline");
+        this.points = {};
+
+        let path = ""
+        Object.entries(set).map( (entry) => {
+            let date = entry[0];
+            let yValue = entry[1];
+            let xValue = ISOdelta(date, this.quad.startX);
+
+            let xCoord = xValue * this.xStep;
+            let yCoord = yValue * this.yStep;
+
+            path += (this.quad.x + xCoord) + "," + 
+                    (this.quad.y + (this.quad.h - yCoord)) + " ";
+
+            let newPoint = document.createElementNS(svgns, "circle");
+            newPoint.setAttribute("cy", (this.quad.y + (this.quad.h - yCoord)));
+            newPoint.setAttribute("cx", this.quad.x + xCoord);
+            newPoint.setAttribute("r", LINE_POINT_SIZE);
+            newPoint.setAttribute("fill", COLORS.lightBlue);
+            this.quad.g.appendChild(newPoint);
+            this.points[date] = newPoint;
+            newPoint.onmouseover = () => this.cmv.highlightPoint(date);
+            newPoint.onmouseout = () => this.cmv.dehighlightPoint(date);
+
+        });
+        this.poly.setAttribute("points", path);
+        this.poly.setAttribute("fill", "none");
+        this.poly.setAttribute("stroke", COLORS.lightBlue);
+        this.poly.setAttribute("stroke-width", "1");
+        this.quad.g.appendChild(this.poly);
+    }
+
+    highlighPoint(label) {
+        points[label].setAttribute("fill", COLORS.yellow);
+    }
+
+    dehighlightPoint(label) {
+        points[label].setAttribute("fill", COLORS.lightBlue);
+    }
+
+    clear() {
+        this.quad.g.removeChild(this.poly);
+        Object.values(this.points).map((p) => {
+            this.quad.g.removeChild(p);
+        });
+    }
 }
 
 class BarChart {
@@ -262,7 +483,37 @@ class BarChart {
         this.svg.appendChild(this.g);
 
         this.bars = [];
+        this.title = document.createElementNS(svgns, "text");
 
+        this.title.onclick = this.setViewOneUp;
+
+    }
+
+    setViewOneUp() {
+        if (cmv.start == cmv.end) {
+            if (cmv.start.length == 4) {
+                cmv.drawAllYears();
+            }
+            if (cmv.start.length == 6) {
+                cmv.drawYear(cmv.start.split("-")[0]);
+            }
+        }
+    }
+
+    setView(start, end=start) {
+        if (start == end) {
+            if (start.length == 4) {
+                this.drawYear(start);
+            } else {
+                this.drawMonth(start);
+            }
+        } else {
+            if (start.length == 4) {
+                this.drawYears(start, end);
+            } else {
+                this.drawMonths(start, end);
+            }
+        }
     }
 
     highlightBar(label) {
@@ -298,7 +549,6 @@ class BarChart {
     }
 
     drawMonths(ym1, ym2) {
-        console.log(this.data.months);
         let startYear = ym1.split('-')[0];
         let startMonth = ym1.split('-')[1];
         let endYear = ym2.split('-')[0];
@@ -344,7 +594,6 @@ class BarChart {
             this.bars.push(new Bar(quad, entry, i, this.cmv));
         });
         // draw title
-        this.title = document.createElementNS(svgns, "text");
         this.title.innerHTML = this.titleContent;
         this.title.setAttribute("x", quad.x + (quad.w / 2));
         this.title.setAttribute("y", quad.y);
@@ -431,78 +680,6 @@ class Bar {
 }
 
 
-class LineChart {
-    constructor(_cont, data) {
-        this.cont = _cont;
-
-        this.svg = document.createElementNS(svgns, "svg");
-        this.svg.setAttribute("width", this.cont.offsetWidth);
-        this.svg.setAttribute("height", this.cont.offsetHeight);
-        this.cont.appendChild(this.svg);
-        this.g = document.createElementNS(svgns, "g");
-        this.svg.appendChild(this.g);
-
-        /* general idea:
-           consider start date as x=0
-           end date as x = end - start date, max x
-           figure out for each data point what it's displacement from x=0 is, use as coord
-           display months, weeks, on x axis
-        */
-        this.startX = data.first_day;
-        this.endX = data.last_day;
-        this.maxX = data.ISOdelta;
-        this.maxY = Math.max(data.max_opens_per_day,
-                             data.max_likes_per_day, 
-                             data.max_passes_per_day);
-        this.lines = [];
-        this.dataSets = [data.Usage.app_opens,
-                         data.Usage.swipes_likes,
-                         data.Usage.swipes_passes];
-
-        let quad = { "g" : this.g,
-                     "x" : CHART_PADDING,
-                     "y" : CHART_PADDING,
-                     "w" : this.cont.offsetWidth - (CHART_PADDING * 2),
-                     "h" : this.cont.offsetHeight - (CHART_PADDING * 2),
-                     "maxX" : this.maxX,
-                     "maxY" : this.maxY,
-                     "startX" : this.startX
-                   }
-
-        this.dataSets.map( set => this.lines.push(new Line(quad, set)));
-    }
-}
-
-class Line {
-    constructor(_quad, set) {
-        this.quad = _quad;        
-        // should assert these are well-enough formed to visualize
-
-        this.xStep = this.quad.w / this.quad.maxX;
-        this.yStep = this.quad.h / this.quad.maxY;
-
-        this.poly = document.createElementNS(svgns, "polyline");
-
-        let path = ""
-        Object.entries(set).map( (entry) => {
-            let date = entry[0];
-            let yValue = entry[1];
-            let xValue = ISOdelta(date, this.quad.startX);
-
-            let xCoord = xValue * this.xStep;
-            let yCoord = yValue * this.yStep;
-
-            path += (this.quad.x + xCoord) + "," + 
-                    (this.quad.y + (this.quad.h - yCoord)) + " ";
-
-        });
-        this.poly.setAttribute("points", path);
-        this.poly.setAttribute("fill", "none");
-        this.poly.setAttribute("stroke", POINT_COLOR);
-        this.poly.setAttribute("stroke-width", "1");
-        this.quad.g.appendChild(this.poly);
-    }
-}
 
 
 

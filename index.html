@@ -3,10 +3,9 @@
   <head>
     <meta charset="utf-8">
     <title>TEST</title>
-    <link href="https://fonts.googleapis.com/css?family=Cousine:400,400i" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <style>
-      @import url("http://wwmairs.com/plex/font.css");
       .chart-container{
         border: 1px solid black;
         margin: auto;
@@ -14,7 +13,6 @@
       }
       h1 {
         display: block;
-        font-family: 'ibm_plex_monolight';
         letter-spacing: 4px;
         font-size: 36px;
         margin-top: 0px;
@@ -27,27 +25,33 @@
         letter-spacing: 2px;
         margin: 0;
         background-color: #fefefe;
-        font-family: 'Cousine', monospace;
+        font-family: 'Roboto Mono', monospace;
       }
-      .bar-chart-container {
+      .cmv-chart-container {
           width: calc(50% - 2px);
           height: calc(50% - 2px);
           float: left;
-          border: 1px dashed black;
+      }
+      .hidden {
+          display: none;
       }
     </style>
   </head>
   <body>
     <h1>tinder</h1>
     <div class="chart-container" id"cmv-container" style="width: 800px; height: 500px;">
-        <div class="bar-chart-container">
+        <div class="cmv-chart-container">
         </div>
-        <div class="bar-chart-container">
+        <div class="cmv-chart-container">
         </div>
-        <div class="bar-chart-container">
+        <div class="cmv-chart-container">
         </div>
-    </div>
-    <div class="chart-container" id="line-container" style="width: 800px; height: 500px;">
+        <div class="cmv-chart-container">
+        </div>
+        <div class="cmv-chart-container">
+        </div>
+        <div class="cmv-chart-container">
+        </div>
     </div>
     <div class="chart-container" id="scatter-container" style="width: 800px; height: 500px;">
     </div>
