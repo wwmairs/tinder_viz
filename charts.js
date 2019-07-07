@@ -193,6 +193,25 @@ class CMV {
                                              set, 
                                              this));
         });
+
+        this.drawAllYears();
+    }
+    // should each view have the same scale?
+
+    setView(start, end=start) {
+        if (start == end) {
+            if (start.length == 4) {
+                this.drawYear(start);
+            } else {
+                this.drawMonth(start);
+            }
+        } else {
+            if (start.length == 4) {
+                this.drawYears(start, end);
+            } else {
+                this.drawMonths(start, end);
+            }
+        }
     }
 
     highlightBar(label) {
@@ -202,6 +221,31 @@ class CMV {
     dehighlightBar(label) {
         this.barCharts.map((bc) => bc.dehighlightBar(label));
     }
+
+    drawAllYears() {
+        this.barCharts.map((bc) => bc.drawAllYears());
+    }
+    
+    drawYears(startYear, endYear) {
+        this.barCharts.map((bc) => bc.drawYears(startYear, endYear));
+    }
+
+    drawYear(year) {
+        this.barCharts.map((bc) => bc.drawYear(year));
+    }
+
+    drawAllMonths() {
+        this.barCharts.map((bc) => bc.drawAllMonths());
+    }
+
+    drawMonths(startMonth, endMonth) {
+        this.barCharts.map((bc) => bc.drawMonths(startMonth, endMonth));
+    }
+
+    drawMonth() {
+        // need to make line charts at this point
+    }
+
 }
 
 class BarChart {
@@ -218,7 +262,6 @@ class BarChart {
         this.svg.appendChild(this.g);
 
         this.bars = [];
-        this.drawAllMonths();
 
     }
 
@@ -235,22 +278,55 @@ class BarChart {
     }
 
     drawYears(startYear, endYear) {
+        let selectedData = {};
+        Object.entries(this.data.years).map((e) => {
+            let k = e[0];
+            let v = e[1];
+            if (k >= startYear && k <= endYear) {
+                selectedData[k] = v;
+            }
+        });
+        this.draw(selectedData);
     }
     
     drawYear(year) {
+        this.drawMonths(year + "-01", year + "-12");
     }
 
     drawAllMonths() {
         this.draw(this.data.months);
     }
 
-    drawMonths(startMonth, endMonth) {
+    drawMonths(ym1, ym2) {
+        console.log(this.data.months);
+        let startYear = ym1.split('-')[0];
+        let startMonth = ym1.split('-')[1];
+        let endYear = ym2.split('-')[0];
+        let endMonth = ym2.split('-')[1];
+        let selectedData = {};
+        Object.entries(this.data.months).map((e) => {
+            let k = e[0];
+            let y = k.split('-')[0];
+            let m = k.split('-')[1];
+            let v = e[1];
+            if ( (y >= startYear && y <= endYear) &&
+                 (m >= startMonth && m <= endMonth)) {
+                selectedData[k] = v;
+            }
+        });
+        this.draw(selectedData);
     }
     
     drawMonth(month) {
+        // don't implement this, shouldn't get here
+    }
+    
+    clear() {
+        this.bars.map((b) => b.clear());
     }
     
     draw(data) {
+        this.clear();
         this.bars = [];
         let w = this.cont.offsetWidth - (CHART_PADDING * 2);
         let h = this.cont.offsetHeight - (CHART_PADDING * 2);
@@ -312,6 +388,7 @@ class Bar {
         this.rect.setAttribute("fill", COLORS.lightBlue);
         this.rect.onmouseover = () => this.cmv.highlightBar(this.xLabelContent);
         this.rect.onmouseout = () => this.cmv.dehighlightBar(this.xLabelContent);
+        this.rect.onclick = () => this.cmv.setView(this.xLabelContent);
 
         quad.g.appendChild(this.rect);
 
@@ -329,10 +406,11 @@ class Bar {
         this.yLabel.setAttribute("y", yCoord);
         this.yLabel.setAttribute("opacity", 0);
 
+        quad.g.appendChild(this.yLabel);
+
     }
 
     highlight() {
-        this.quad.g.appendChild(this.yLabel);
         this.rect.setAttribute("fill", COLORS.yellow);
         this.xLabel.setAttribute("opacity", 1);
         this.yLabel.setAttribute("opacity", 1);
@@ -342,6 +420,13 @@ class Bar {
         this.rect.setAttribute("fill", COLORS.lightBlue);
         this.xLabel.setAttribute("opacity", 0);
         this.yLabel.setAttribute("opacity", 0);
+    }
+
+    clear() {
+        this.quad.g.removeChild(this.rect);
+        this.quad.g.removeChild(this.xLabel);
+        this.quad.g.removeChild(this.yLabel);
+        // walk through and remove children from parents up to g
     }
 }
 
