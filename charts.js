@@ -110,12 +110,23 @@ function parseData(data) {
     data["last_day"] = Object.keys(data.Usage.app_opens).slice(-1)[0];
     data["ISOdelta"] = ISOdelta(data.last_day, data.first_day);
 
+    // make total swipes
+    let total_swipes = {};
+    Object.entries(data.Usage.swipes_likes).map( (e) => {
+        let k = e[0];
+        let val = e[1];
+        total_swipes[k] = val + data.Usage.swipes_passes[k];
+    });
+    data.Usage["total_swipes"] = total_swipes;
+
     var totals = {
         "opens" : {"years" : {}, "months" : {}},
         "likes" : {"years" : {}, "months" : {}}, 
-        "passes" : {"years" : {}, "months" : {}}
+        "passes" : {"years" : {}, "months" : {}},
+        "swipes" : {"years" : {}, "months" : {}},
     }
 
+    // make lists of values for year, year-month
     Object.entries(data.Usage.app_opens).map( (e) => {
         let y = e[0].slice(0, 4);
         let ym = e[0].slice(0, 7);
@@ -158,7 +169,22 @@ function parseData(data) {
         totals.passes.years[y].push(val);
         totals.passes.months[ym].push(val);
     });
+    Object.entries(data.Usage.total_swipes).map( (e) => {
+        let y = e[0].slice(0, 4);
+        let ym = e[0].slice(0, 7);
+        let val = e[1];
+        if (! (y in totals.swipes.years)) {
+            totals.swipes.years[y] = [];
+        }
+        if (! (ym in totals.swipes.months)) {
+            totals.swipes.months[ym] = [];
+        }
 
+        totals.swipes.years[y].push(val);
+        totals.swipes.months[ym].push(val);
+    });
+
+    // turn totals into averages
     var averagesPerDay = totals;
     Object.values(averagesPerDay).map((data) => {
         Object.entries(data.years).map((e)  => {
@@ -173,6 +199,7 @@ function parseData(data) {
         });
     });
 
+
     data["averages_per_day"] = averagesPerDay;
     return data;
 }
@@ -180,6 +207,13 @@ function parseData(data) {
 function makeCharts(data) {
     scatterPlot = new ScatterPlot(document.getElementById("scatter-container"), data);
     cmv = new CMV(document.getElementById("cmv-container"), data);
+    areaChart = new AreaChart(document.getElementById("area-chart-container"), data);
+}
+
+class AreaChart {
+    constructor(container, data) {
+        console.log(data);
+    }
 }
 
 class CMV {
@@ -199,7 +233,8 @@ class CMV {
         // lineCharts
         this.lineChartDataSets = [["opens", data.Usage.app_opens],
                                   ["likes", data.Usage.swipes_likes],
-                                  ["passes", data.Usage.swipes_passes]];
+                                  ["passes", data.Usage.swipes_passes],
+                                  ["swipes", data.Usage.total_swipes]];
 
         this.lineChartDataSets.map((set) => {
             this.lineCharts.push(
