@@ -120,69 +120,36 @@ function parseData(data) {
     data.Usage["total_swipes"] = total_swipes;
 
     var totals = {
-        "opens" : {"years" : {}, "months" : {}},
-        "likes" : {"years" : {}, "months" : {}}, 
-        "passes" : {"years" : {}, "months" : {}},
-        "swipes" : {"years" : {}, "months" : {}},
+        "app_opens" : {"years" : {}, "months" : {}},
+        "swipes_likes" : {"years" : {}, "months" : {}}, 
+        "swipes_passes" : {"years" : {}, "months" : {}},
+        "total_swipes" : {"years" : {}, "months" : {}},
+        "matches" : {"years" : {}, "months" : {}},
+        "messages_received" : {"years" : {}, "months" : {}},
+        "messages_sent" : {"years" : {} , "months" : {}},
     }
 
+
     // make lists of values for year, year-month
-    Object.entries(data.Usage.app_opens).map( (e) => {
-        let y = e[0].slice(0, 4);
-        let ym = e[0].slice(0, 7);
-        let val = e[1];
-        if (! (y in totals.opens.years)) {
-            totals.opens.years[y] = [];
-        }
-        if (! (ym in totals.opens.months)) {
-            totals.opens.months[ym] = [];
-        }
-        
-        totals.opens.years[y].push(val);
-        totals.opens.months[ym].push(val);
+    Object.entries(totals).map( (item) => {
+        let totalsName = item[0];
+        let totals = item[1];
+        Object.entries(data.Usage[totalsName]).map( (e) => {
+            let y = e[0].slice(0, 4);
+            let ym = e[0].slice(0, 7);
+            let val = e[1];
+            if (! (y in totals.years)) {
+                totals.years[y] = [];
+            }
+            if (! (ym in totals.months)) {
+                totals.months[ym] = [];
+            }
+            
+            totals.years[y].push(val);
+            totals.months[ym].push(val);
+        });
     });
-    Object.entries(data.Usage.swipes_likes).map( (e) => {
-        let y = e[0].slice(0, 4);
-        let ym = e[0].slice(0, 7);
-        let val = e[1];
-        if (! (y in totals.likes.years)) {
-            totals.likes.years[y] = [];
-        }
-        if (! (ym in totals.likes.months)) {
-            totals.likes.months[ym] = [];
-        }
 
-        totals.likes.years[y].push(val);
-        totals.likes.months[ym].push(val);
-    });
-    Object.entries(data.Usage.swipes_passes).map( (e) => {
-        let y = e[0].slice(0, 4);
-        let ym = e[0].slice(0, 7);
-        let val = e[1];
-        if (! (y in totals.passes.years)) {
-            totals.passes.years[y] = [];
-        }
-        if (! (ym in totals.passes.months)) {
-            totals.passes.months[ym] = [];
-        }
-
-        totals.passes.years[y].push(val);
-        totals.passes.months[ym].push(val);
-    });
-    Object.entries(data.Usage.total_swipes).map( (e) => {
-        let y = e[0].slice(0, 4);
-        let ym = e[0].slice(0, 7);
-        let val = e[1];
-        if (! (y in totals.swipes.years)) {
-            totals.swipes.years[y] = [];
-        }
-        if (! (ym in totals.swipes.months)) {
-            totals.swipes.months[ym] = [];
-        }
-
-        totals.swipes.years[y].push(val);
-        totals.swipes.months[ym].push(val);
-    });
 
     // turn totals into averages
     var averagesPerDay = totals;
@@ -234,7 +201,11 @@ class CMV {
         this.lineChartDataSets = [["opens", data.Usage.app_opens],
                                   ["likes", data.Usage.swipes_likes],
                                   ["passes", data.Usage.swipes_passes],
-                                  ["swipes", data.Usage.total_swipes]];
+                                  ["swipes", data.Usage.total_swipes],
+                                  ["matches", data.Usage.matches],
+                                  ["messages_sent", data.Usage.messages_sent],
+                                  ["messages_received", data.Usage.messages_received]
+                                  ];
 
         this.lineChartDataSets.map((set) => {
             this.lineCharts.push(
