@@ -178,8 +178,113 @@ function makeCharts(data) {
 }
 
 class AreaChart {
-    constructor(container, data) {
+    constructor(_cont, data) {
         console.log(data);
+        this.avgSwipes = data.averages_per_day.total_swipes;
+        this.avgLikes = data.averages_per_day.swipes_likes;
+
+        this.avgSets = {"swipes" : data.averages_per_day.total_swipes,
+                        "likes" : data.averages_per_day.total_swipes};
+        this.daySets = {"swipes" : data.Usage.total_swipes,
+                        "likes" : data.Usage.swipes_likes};
+
+        this.cont = _cont;
+        this.svg = document.createElementNS(svgns, "svg");
+        this.svg.setAttribute("width", this.cont.offsetWidth);
+        this.svg.setAttribute("height", this.cont.offsetHeight);
+        this.cont.appendChild(this.svg);
+        this.g = document.createElementNS(svgns, "g");
+        this.svg.appendChild(this.g);
+        this.line;
+        this.title = document.createElementNS(svgns, "text");
+        this.title.onclick = this.setViewOneUp;
+
+        /* general idea:
+           consider start date as x=0
+           end date as x = end - start date, max x
+           figure out for each data point what it's displacement from x=0 is, use as coord
+           display months, weeks, on x axis
+        */
+        this.drawMonth("2017-11");
+    }
+
+    setViewOneUp() {
+    }
+
+    setView(start, end=start) {
+        this.drawMonth(start);
+    }
+
+    drawMonth(month) {
+        this.drawAverageDays(month + "-01", month + "-31");
+    }
+
+    drawAllDays() {
+        this.draw(this.daySets);
+    }
+
+    drawDays(firstDay, lastDay) {
+        let selectedData = {};
+        Object.entries(this.set).map((e) => {
+            let k = e[0];
+            let v = e[1];
+            let date = k.split("-");
+            let date1 = firstDay.split("-");
+            let date2 = lastDay.split("-");
+            if ( (date[0] >= date1[0] && date[0] <= date2[0]) &&
+                 (date[1] >= date1[1] && date[1] <= date2[1]) &&
+                 (date[2] >= date1[2] && date[2] <= date2[2])) {
+                selectedData[k] = v;
+            }
+
+        });
+        this.draw(selectedData);
+    }
+
+    draw(set) {
+        // make new data list
+        if (this.line != undefined) {
+            this.clear();
+        }
+        let firstDay = Object.entries(set)[0][0];
+        let lastDay = Object.entries(set).slice(-1)[0][0];
+        let maxX = ISOdelta(lastDay, firstDay);
+        let maxY = Math.max(...Object.values(set));
+
+        let quad = { "g" : this.g,
+                     "x" : CHART_PADDING,
+                     "y" : CHART_PADDING,
+                     "w" : this.cont.offsetWidth - (CHART_PADDING * 2),
+                     "h" : this.cont.offsetHeight - (CHART_PADDING * 2),
+                     "maxX" : maxX,
+                     "maxY" : maxY,
+                     "startX" : firstDay
+                   }
+        this.line = new Line(quad, set, cmv);
+        // draw title
+        this.title.innerHTML = this.titleContent;
+        this.title.setAttribute("x", quad.x + (quad.w / 2));
+        this.title.setAttribute("y", quad.y);
+        this.g.appendChild(this.title);
+        // draw axes
+        this.xAxis = document.createElementNS(svgns, "line");
+        this.xAxis.setAttribute("x1", quad.x);
+        this.xAxis.setAttribute("y1", quad.y + quad.h);
+        this.xAxis.setAttribute("x2", quad.x + quad.w);
+        this.xAxis.setAttribute("y2", quad.y + quad.h);
+        this.xAxis.setAttribute("stroke", "#000000");
+        this.g.appendChild(this.xAxis);
+        this.yAxis = document.createElementNS(svgns, "line");
+        this.yAxis.setAttribute("x1", quad.x);
+        this.yAxis.setAttribute("y1", quad.y);
+        this.yAxis.setAttribute("x2", quad.x);
+        this.yAxis.setAttribute("y2", quad.y + quad.h);
+        this.yAxis.setAttribute("stroke", "#000000");
+        this.g.appendChild(this.yAxis);
+    }
+
+    clear() {
+        this.line.clear();
     }
 }
 
