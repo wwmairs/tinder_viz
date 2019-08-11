@@ -338,6 +338,11 @@ class Area {
 
         });
         // add to path
+        let firstPoint = Object.values(this.points)[0];
+        let lastPoint = Object.values(this.points).slice(-1)[0];
+        path += (lastPoint.getAttribute("cx") + ", " + (this.quad.y + this.quad.h) + " ");
+        path += (this.quad.x + ", " + (this.quad.y + this.quad.h) + " ");
+        path += (firstPoint.getAttribute("cx") + ", " + firstPoint.getAttribute("cy") + " ");
         // last point to x axis
         // origin/first point
         this.poly.setAttribute("points", path);
