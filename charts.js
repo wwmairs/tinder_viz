@@ -12,6 +12,11 @@ const COLORS = {
 const POINT_COLOR = COLORS.red;
 const HIGHLIGHT_COLOR = COLORS.yellow;;
 
+const COLORS_BY_ROLE = {
+    "likes"  : COLORS.red,
+    "swipes" : COLORS.darkBlue,
+};
+
 var scatterPlot;
 var lineChart;
 
@@ -179,7 +184,6 @@ function makeCharts(data) {
 
 class AreaChart {
     constructor(_cont, data) {
-        console.log(data);
         this.avgSwipes = data.averages_per_day.total_swipes;
         this.avgLikes = data.averages_per_day.swipes_likes;
 
@@ -205,7 +209,7 @@ class AreaChart {
            figure out for each data point what it's displacement from x=0 is, use as coord
            display months, weeks, on x axis
         */
-        this.drawMonth("2017-11");
+        this.drawMonth("2015-11");
     }
 
     setViewOneUp() {
@@ -216,40 +220,45 @@ class AreaChart {
     }
 
     drawMonth(month) {
-        this.drawAverageDays(month + "-01", month + "-31");
+        this.drawDays(this.daySets, month + "-01", month + "-31");
     }
 
     drawAllDays() {
         this.draw(this.daySets);
     }
 
-    drawDays(firstDay, lastDay) {
+    drawDays(set, firstDay, lastDay) {
         let selectedData = {};
-        Object.entries(this.set).map((e) => {
-            let k = e[0];
-            let v = e[1];
-            let date = k.split("-");
-            let date1 = firstDay.split("-");
-            let date2 = lastDay.split("-");
-            if ( (date[0] >= date1[0] && date[0] <= date2[0]) &&
-                 (date[1] >= date1[1] && date[1] <= date2[1]) &&
-                 (date[2] >= date1[2] && date[2] <= date2[2])) {
-                selectedData[k] = v;
-            }
+        Object.entries(set).map((subsetPair) => {
+            let subsetName = subsetPair[0];
+            let subset = subsetPair[1];
+            selectedData[subsetName] = {};
+            Object.entries(subset).map((e) => {
+                let k = e[0];
+                let v = e[1];
+                let date = k.split("-");
+                let date1 = firstDay.split("-");
+                let date2 = lastDay.split("-");
+                if ( (date[0] >= date1[0] && date[0] <= date2[0]) &&
+                     (date[1] >= date1[1] && date[1] <= date2[1]) &&
+                     (date[2] >= date1[2] && date[2] <= date2[2])) {
+                    selectedData[subsetName][k] = v;
+                }
+            });
 
         });
         this.draw(selectedData);
     }
 
-    draw(set) {
+    draw(sets) {
         // make new data list
-        if (this.line != undefined) {
+        if (this.area != undefined) {
             this.clear();
         }
-        let firstDay = Object.entries(set)[0][0];
-        let lastDay = Object.entries(set).slice(-1)[0][0];
+        let firstDay = Object.entries(sets.swipes)[0][0];
+        let lastDay = Object.entries(sets.swipes).slice(-1)[0][0];
         let maxX = ISOdelta(lastDay, firstDay);
-        let maxY = Math.max(...Object.values(set));
+        let maxY = Math.max(...Object.values(sets.swipes));
 
         let quad = { "g" : this.g,
                      "x" : CHART_PADDING,
@@ -260,7 +269,12 @@ class AreaChart {
                      "maxY" : maxY,
                      "startX" : firstDay
                    }
-        this.line = new Line(quad, set, cmv);
+
+        Object.entries(sets).map((e) => {
+            let setName = e[0];
+            let set = e[1];
+            this.area = new Area(quad, set, setName);
+        });
         // draw title
         this.title.innerHTML = this.titleContent;
         this.title.setAttribute("x", quad.x + (quad.w / 2));
@@ -284,7 +298,68 @@ class AreaChart {
     }
 
     clear() {
-        this.line.clear();
+        this.area.clear();
+    }
+}
+
+class Area {
+    constructor(_quad, set, setName) {
+        console.log(setName);
+        this.quad = _quad;
+        // should assert these are well-enough formed to visualize
+
+        this.xStep = this.quad.w / this.quad.maxX;
+        this.yStep = this.quad.h / this.quad.maxY;
+
+        this.poly = document.createElementNS(svgns, "polygon");
+        this.points = {};
+
+        let path = ""
+        Object.entries(set).map( (entry) => {
+            let date = entry[0];
+            let yValue = entry[1];
+            let xValue = ISOdelta(date, this.quad.startX);
+
+            let xCoord = xValue * this.xStep;
+            let yCoord = yValue * this.yStep;
+
+            path += (this.quad.x + xCoord) + "," + 
+                    (this.quad.y + (this.quad.h - yCoord)) + " ";
+
+            let newPoint = document.createElementNS(svgns, "circle");
+            newPoint.setAttribute("cy", (this.quad.y + (this.quad.h - yCoord)));
+            newPoint.setAttribute("cx", this.quad.x + xCoord);
+            newPoint.setAttribute("r", LINE_POINT_SIZE);
+            newPoint.setAttribute("fill", COLORS_BY_ROLE[setName]);
+            this.quad.g.appendChild(newPoint);
+            this.points[date] = newPoint;
+            //newPoint.onmouseover = () => this.cmv.highlightPoint(date);
+            //newPoint.onmouseout = () => this.cmv.dehighlightPoint(date);
+
+        });
+        // add to path
+        // last point to x axis
+        // origin/first point
+        this.poly.setAttribute("points", path);
+        this.poly.setAttribute("fill", COLORS_BY_ROLE[setName]);
+        this.poly.setAttribute("stroke", COLORS_BY_ROLE[setName]);
+        this.poly.setAttribute("stroke-width", "1");
+        this.quad.g.appendChild(this.poly);
+    }
+
+    highlighPoint(label) {
+        points[label].setAttribute("fill", COLORS.yellow);
+    }
+
+    dehighlightPoint(label) {
+        points[label].setAttribute("fill", COLORS.lightBlue);
+    }
+
+    clear() {
+        this.quad.g.removeChild(this.poly);
+        Object.values(this.points).map((p) => {
+            this.quad.g.removeChild(p);
+        });
     }
 }
 
