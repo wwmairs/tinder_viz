@@ -188,7 +188,7 @@ class AreaChart {
         this.avgLikes = data.averages_per_day.swipes_likes;
 
         this.avgSets = {"swipes" : data.averages_per_day.total_swipes,
-                        "likes" : data.averages_per_day.total_swipes};
+                        "likes" : data.averages_per_day.swipes_likes};
         this.daySets = {"swipes" : data.Usage.total_swipes,
                         "likes" : data.Usage.swipes_likes};
 
@@ -209,7 +209,7 @@ class AreaChart {
            figure out for each data point what it's displacement from x=0 is, use as coord
            display months, weeks, on x axis
         */
-        this.drawMonth("2015-11");
+        this.drawYear("2017");
     }
 
     setViewOneUp() {
@@ -217,6 +217,38 @@ class AreaChart {
 
     setView(start, end=start) {
         this.drawMonth(start);
+    }
+
+    drawYear(year) {
+        let dataSet = {};
+        Object.entries(this.avgSets).map((set) => {
+            let setName = set[0];
+            let setData = set[1].months;
+            dataSet[setName] = setData;
+        });
+        this.drawMonths(dataSet, year + "-01", year + "-12");
+    }
+
+    drawMonths(set, firstMonth, lastMonth) {
+        let selectedData = {};
+        Object.entries(set).map((subsetPair) => {
+            let subsetName = subsetPair[0];
+            let subset = subsetPair[1];
+            selectedData[subsetName] = {};
+            Object.entries(subset).map((e) => {
+                let k = e[0];
+                let v = e[1];
+                let date = k.split("-");
+                let date1 = firstMonth.split("-");
+                let date2 = lastMonth.split("-");
+                if ( (date[0] >= date1[0] && date[0] <= date2[0]) &&
+                     (date[1] >= date1[1] && date[1] <= date2[1]) ) {
+                    selectedData[subsetName][k] = v;
+                }
+            });
+
+        });
+        this.draw(selectedData);
     }
 
     drawMonth(month) {
@@ -276,9 +308,10 @@ class AreaChart {
             this.area = new Area(quad, set, setName);
         });
         // draw title
-        this.title.innerHTML = this.titleContent;
+        this.title.innerHTML = "Likes and Passes";
         this.title.setAttribute("x", quad.x + (quad.w / 2));
         this.title.setAttribute("y", quad.y);
+        this.title.setAttribute("text-anchor", "middle");
         this.g.appendChild(this.title);
         // draw axes
         this.xAxis = document.createElementNS(svgns, "line");
@@ -304,7 +337,6 @@ class AreaChart {
 
 class Area {
     constructor(_quad, set, setName) {
-        console.log(setName);
         this.quad = _quad;
         // should assert these are well-enough formed to visualize
 
@@ -579,6 +611,7 @@ class LineChart {
         this.title.innerHTML = this.titleContent;
         this.title.setAttribute("x", quad.x + (quad.w / 2));
         this.title.setAttribute("y", quad.y);
+        this.title.setAttribute("text-anchor", "middle");
         this.g.appendChild(this.title);
         // draw axes
         this.xAxis = document.createElementNS(svgns, "line");
@@ -788,6 +821,7 @@ class BarChart {
         this.title.innerHTML = this.titleContent;
         this.title.setAttribute("x", quad.x + (quad.w / 2));
         this.title.setAttribute("y", quad.y);
+        this.title.setAttribute("text-anchor", "middle");
         this.g.appendChild(this.title);
         // draw axes
         this.xAxis = document.createElementNS(svgns, "line");
