@@ -65,12 +65,10 @@ node_modules/
 .env
 
 # virtualenv shit
-env/include/
-env/lib/
-env/bin/
+env/
 
 #anything swap
 *.swp
 
 #firebase key
-env/firebase_key.json
+firebase_key.json
