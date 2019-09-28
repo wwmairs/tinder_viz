@@ -71,4 +71,7 @@ env/
 *.swp
 
 #firebase key
-firebase_key.json
+swipe_logic_app/firebase_key.json
+
+swipe_logic_app/__pycache__
+swipe_logic_app/lib

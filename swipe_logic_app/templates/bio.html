@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block body %}
+    <h2>a bio</h2>
+    <p>{{ bio.bio }}</p>
+    <h3>upvotes: {{ bio.upvotes }}</h3>
+    <h3>downvotes: {{ bio.downvotes }}</h3>
+    <form method="post" action="/bios/{{ key }}/upvote">
+        <button>upvote</button>
+    </form>
+    <form method="post" action="/bios/{{ key }}/downvote">
+        <button>downvote</button>
+    </form>
+{% endblock %}
