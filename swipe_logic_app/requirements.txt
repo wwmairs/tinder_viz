@@ -1,2 +1,2 @@
-Flask>=0.12.4
-Firebase-Admin==3.0.0
+Flask==1.0.2
+firebase-admin==3.0.0

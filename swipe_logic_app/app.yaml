@@ -1,14 +1,12 @@
-runtime: python36
-api_version: 1
-threadsafe: true
-
-libraries:
-- name: ssl
-  version: latest
+runtime: python37
 
 handlers:
 - url: /static
   static_dir: static
 - url: /.*
-  script: main.app
+  script: auto
 
+env_variables:
+    FLASK_APP: 'main.py'
+    GOOGLE_APPLICATION_CREDENTIALS: 'gcp_key.json'
+    
